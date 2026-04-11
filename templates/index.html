@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Anomaly Detection</title>
+  <link rel="stylesheet" href="/static/main.css">
+  <script src="/static/plotly.min.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar">
+      <div class="header">
+        <h1 class="app-title">Anomaly Detection Application</h1>
+        <!-- <p class="app-subtitle">Detect outliers in your data</p> -->
+      </div>
+
+      <div class="section">
+
+        <div class="upload-area" id="upload-area">
+          <div class="upload-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+          </div>
+          <div class="upload-text">Drop TDMS or CSV file here or click to browse</div>
+          <div class="upload-hint">Supports .csv && .tdms files up to 200MB</div>
+          <input type="file" id="file-input" accept=".csv, .tdms" hidden />
+        </div>
+
+        <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form" id="upload-form">
+          <input type="file" name="file" accept=".csv, .tdms" id="form-file-input" />
+        </form>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">
+          <span class="icon">⚙️</span>
+          Parameters
+        </h2>
+
+        <div class="control-group">
+          <label class="label" for="method">Detection Method</label>
+          <select class="input" id="method">
+            <option value="minmax" selected>Min-Max</option>
+            <option value="knn">KNN</option>
+            <option value="zscore">Z-Score</option>
+            <option value="rolling_zscore">Rolling Z-Score</option>
+            <option value="lof">Local Outlier Factor (LOF)</option>
+            <option value="isolation_forest">Isolation Forest</option>
+          </select>
+        </div>
+
+        <div class="control-group" id="threshold-group">
+          <label class="label" for="thresholdPercentile">Threshold Percentile</label>
+          <input class="input" id="thresholdPercentile" type="number" value="99.999" min="0" max="100" step="0.1" />
+        </div>
+
+        <div class="control-group" id="kvalue-group">
+          <label class="label" for="kValue">Number of Neighbors (k)</label>
+          <input class="input" id="kValue" type="number" value="15" min="1" />
+        </div>
+
+        <div class="control-group" id="zscore-threshold-group" style="display: none;">
+          <label class="label" for="zscoreThreshold">Z-Score Threshold</label>
+          <input class="input" id="zscoreThreshold" type="number" value="5" min="0" step="0.1" />
+        </div>
+
+        <div class="control-group" id="lof-threshold-group" style="display: none;">
+          <label class="label" for="lof">LOF Threshold</label>
+          <input class="input" id="lofThreshold" type="number" value="1.5" min="0" step="0.1" />
+        </div>
+
+        <div class="control-group" id="window-group" style="display: none;">
+          <label class="label" for="windowSize">Window Size</label>
+          <input class="input" id="windowSize" type="number" value="50" min="5" />
+        </div>
+
+      </div>
+
+      <div class="columns-section">
+        <div class="columns-header">
+          <h2 class="section-title" style="margin-bottom: 0;">
+            <span class="icon">📊</span>
+            Columns
+          </h2>
+          <span class="columns-count" id="columns-count">0 columns</span>
+        </div>
+        
+        <div class="columns-grid">
+          <div class="grid" id="carousel">
+            </div>
+        </div>
+
+        <!-- <div class="pagination">
+          <button class="btn nav-btn" id="prevBtn" disabled>← Previous</button>
+          <button class="btn nav-btn" id="nextBtn" disabled>Next →</button>
+        </div> -->
+      </div>
+
+      <div class="section">
+        <button class="btn btn-primary btn-full" id="run-all-btn">
+          <span class="icon">🔍</span>
+          Generate Report
+        </button>
+        <div id="run-all-message"></div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="content-header">
+        <h1 class="content-title">Analysis Results</h1>
+      </div>
+      
+      <div class="content-body">
+        <div class="graph-section">
+          <div class="graph-container" id="graph-container">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+              <div class="empty-state-text">No visualization selected</div>
+              <div class="empty-state-hint">Click on a column to generate its anomaly detection graph</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="report-section">
+          <div class="report-header">
+            <h3 class="report-title">Detection Summary</h3>
+            <span class="report-status" id="report-status">Ready</span>
+          </div>
+          <div class="report-content" id="report-content">
+            Upload a CSV file and generate a report to see anomaly detection results.
+          </div>
+          <div id="report-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% if columns %}
+    <script>
+      window.columns = {{ columns|tojson }};
+    </script>
+  {% endif %}
+  <script src="/static/main.js"></script>
+</html>
